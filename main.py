@@ -7,7 +7,7 @@ from urllib.parse import urlsplit, urlunsplit
 from dataclasses import dataclass
 from typing import Optional, List
 
-from PySide6.QtCore import Qt, QProcess, QProcessEnvironment, QLockFile, QSettings, QUrl
+from PySide6.QtCore import Qt, QProcess, QProcessEnvironment, QLockFile, QSettings, QUrl, QTimer
 from PySide6.QtGui import QDesktopServices, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -36,6 +36,8 @@ STRINGS = {
         "app_preview": "项目界面",
         "operation_guide": "操作指南",
         "open": "打开项目",
+        "opening": "正在启动: {name}",
+        "force_stop": "强制停止",
         "running": "运行中: {name}",
         "no_preview": "暂无预览图",
         "preview_missing": "未找到可用图片",
@@ -49,6 +51,7 @@ STRINGS = {
         "entry_missing": "入口不存在: {path}",
         "python_missing": "Python 不存在: {path}",
         "cannot_launch": "无法启动 {title}: {msg}",
+        "launch_timeout": "启动超时，已强制停止: {title}",
         "hub_running": "AI Hub 已在运行，请勿重复启动。",
         "lang_button": "EN",
     },
@@ -58,6 +61,8 @@ STRINGS = {
         "app_preview": "App Preview",
         "operation_guide": "Operation Guide",
         "open": "Open",
+        "opening": "Starting: {name}",
+        "force_stop": "Force Stop",
         "running": "Running: {name}",
         "no_preview": "No preview available",
         "preview_missing": "Preview image not found",
@@ -71,6 +76,7 @@ STRINGS = {
         "entry_missing": "Entry not found: {path}",
         "python_missing": "Python not found: {path}",
         "cannot_launch": "Cannot launch {title}: {msg}",
+        "launch_timeout": "Launch timeout, process was force-stopped: {title}",
         "hub_running": "AI Hub is already running.",
         "lang_button": "中文",
     },
@@ -286,7 +292,7 @@ APP_CARD_GUIDES = {
     "ai_nas": {
         "zh": {
             "show_icon": False,
-            "tip": "提示: 在 CasaOS 中打开对话助手，可直接输入文本指令",
+            "tip": "提示: 在 CasaOS 中打开Voice Assistant，可直接输入文本指令",
             "tip2": "语音方式: 先说唤醒词“小远同学”，再说任务",
             "cards": [
                 {"title": "测试项 1", "desc": "下载测试视频并播放"},
@@ -297,7 +303,7 @@ APP_CARD_GUIDES = {
         },
         "en": {
             "show_icon": False,
-            "tip": "Tip: Open the web assistant in CasaOS or type commands directly",
+            "tip": "Tip: Open the Voice Assistant in CasaOS or type commands directly",
             "tip2": "Voice entry: Say wake word xiaoyuantongxue, then speak your task",
             "cards": [
                 {"title": "Test 1", "desc": "Download the test video and play it"},
@@ -660,11 +666,23 @@ class NasPanel(QWidget):
 
 
 class HubWindow(QMainWindow):
+    LAUNCH_OUTPUT_TIMEOUT_MS = 45000
+    HANDOFF_DELAY_MS = 2200
+
     def __init__(self):
         super().__init__()
         self.apps = APP_SPECS
         self.active_process: Optional[QProcess] = None
         self.active_app: Optional[AppSpec] = None
+        self._launch_watchdog = QTimer(self)
+        self._launch_watchdog.setSingleShot(True)
+        self._launch_watchdog.timeout.connect(self._on_launch_watchdog_timeout)
+        self._handoff_timer = QTimer(self)
+        self._handoff_timer.setSingleShot(True)
+        self._handoff_timer.timeout.connect(self._handoff_to_child)
+        self._launch_pending = False
+        self._child_has_output = False
+        self._handoff_done = False
         self.lang = load_lang()
 
         self._build_ui()
@@ -733,8 +751,10 @@ class HubWindow(QMainWindow):
         self.desc_label.setWordWrap(True)
         self.badge_label = QLabel("")
         self.badge_label.setObjectName("statusValue")
+        self.badge_label.setVisible(False)
 
         header_layout.addWidget(self.desc_label)
+        header_layout.addWidget(self.badge_label, 0, Qt.AlignLeft)
 
         self.nas_panel = NasPanel(self)
         self.nas_panel.attach_toolbar_buttons(self.open_btn, self.lang_btn)
@@ -746,6 +766,7 @@ class HubWindow(QMainWindow):
 
         self.proc_log = QTextEdit()
         self.proc_log.setReadOnly(True)
+        self.proc_log.document().setMaximumBlockCount(2000)
         self.proc_log.setMinimumHeight(110)
         self.proc_log.setPlaceholderText(T(self.lang, "proc_log"))
         self.proc_log.setVisible(True)
@@ -941,6 +962,14 @@ class HubWindow(QMainWindow):
                 f"background-color: {bg}; color: {fg}; font-weight: 700; padding: 4px 10px; border-radius: 8px;"
             )
 
+    def _handoff_to_child(self):
+        if self._handoff_done:
+            return
+        if not self._is_process_running():
+            return
+        self._handoff_done = True
+        self.hide()
+
     def _bring_to_front(self):
         self.showNormal()
         self.raise_()
@@ -1044,6 +1073,46 @@ class HubWindow(QMainWindow):
     def _is_process_running(self) -> bool:
         return self.active_process is not None and self.active_process.state() != QProcess.NotRunning
 
+    def force_stop_active(self):
+        self._force_stop_active_process(log_prefix="[force-stop]")
+
+    def _force_stop_active_process(self, log_prefix: str = "[stop]", bring_to_front: bool = True):
+        if not self._is_process_running() or not self.active_process:
+            return
+
+        title = display_title(self.active_app, self.lang) if self.active_app else "-"
+        self.proc_log.append(f"{log_prefix} {title}")
+        self._launch_watchdog.stop()
+        self._handoff_timer.stop()
+        self._launch_pending = False
+        self._handoff_done = False
+
+        proc = self.active_process
+        proc.terminate()
+        if not proc.waitForFinished(2500):
+            proc.kill()
+            proc.waitForFinished(1500)
+
+        self.active_process = None
+        self.active_app = None
+        if bring_to_front:
+            self._bring_to_front()
+        self.on_app_selected(self.list_widget.currentRow())
+
+    def _on_launch_watchdog_timeout(self):
+        if not self._launch_pending:
+            return
+        if not self._is_process_running():
+            self._launch_pending = False
+            return
+        if self._child_has_output:
+            self._launch_pending = False
+            return
+
+        title = display_title(self.active_app, self.lang) if self.active_app else "-"
+        self._force_stop_active_process(log_prefix="[launch-timeout]")
+        QMessageBox.warning(self, T(self.lang, "notice"), T(self.lang, "launch_timeout", title=title))
+
     def launch_selected(self):
         spec = self._selected_spec()
         if not spec:
@@ -1072,6 +1141,7 @@ class HubWindow(QMainWindow):
 
         self.active_process = QProcess(self)
         self.active_app = spec
+        self._handoff_done = False
         self.active_process.setProgram(python_bin)
         self.active_process.setArguments([spec.script])
         self.active_process.setWorkingDirectory(spec.cwd)
@@ -1091,6 +1161,9 @@ class HubWindow(QMainWindow):
         self.active_process.finished.connect(self._on_child_finished)
 
         self.proc_log.append(f"$ {python_bin} {spec.script}")
+        self._child_has_output = False
+        self._launch_pending = True
+        self._launch_watchdog.start(self.LAUNCH_OUTPUT_TIMEOUT_MS)
         self.active_process.start()
 
         if not self.active_process.waitForStarted(5000):
@@ -1102,13 +1175,16 @@ class HubWindow(QMainWindow):
             )
             self.active_process = None
             self.active_app = None
+            self._launch_pending = False
+            self._launch_watchdog.stop()
             self.on_app_selected(self.list_widget.currentRow())
 
     def _on_child_started(self):
         name = display_title(self.active_app, self.lang) if self.active_app else "-"
-        self._set_badge(T(self.lang, "running", name=name), "#f59e0b")
+        self._set_badge(T(self.lang, "opening", name=name), "#f59e0b")
         self.open_btn.setEnabled(False)
-        self.hide()
+        # Keep Hub visible briefly as a launch transition, then hand off to child app.
+        self._handoff_timer.start(self.HANDOFF_DELAY_MS)
 
     def _on_child_error(self, _err):
         if not self.active_process:
@@ -1120,18 +1196,30 @@ class HubWindow(QMainWindow):
             return
         text = bytes(self.active_process.readAllStandardOutput()).decode("utf-8", errors="replace")
         if text:
+            self._child_has_output = True
+            self._launch_pending = False
+            self._launch_watchdog.stop()
             self.proc_log.append(text.rstrip())
+            self._handoff_to_child()
 
     def _read_child_stderr(self):
         if not self.active_process:
             return
         text = bytes(self.active_process.readAllStandardError()).decode("utf-8", errors="replace")
         if text:
+            self._child_has_output = True
+            self._launch_pending = False
+            self._launch_watchdog.stop()
             self.proc_log.append(text.rstrip())
+            self._handoff_to_child()
 
     def _on_child_finished(self, exit_code, _status):
         name = display_title(self.active_app, self.lang) if self.active_app else "-"
         self.proc_log.append(f"[finished] {name}, exit={exit_code}")
+        self._launch_pending = False
+        self._launch_watchdog.stop()
+        self._handoff_timer.stop()
+        self._handoff_done = False
         self.active_process = None
         self.active_app = None
         self._bring_to_front()
@@ -1139,10 +1227,7 @@ class HubWindow(QMainWindow):
 
     def closeEvent(self, event):
         if self._is_process_running() and self.active_process:
-            self.active_process.terminate()
-            if not self.active_process.waitForFinished(2500):
-                self.active_process.kill()
-                self.active_process.waitForFinished(1500)
+            self._force_stop_active_process(log_prefix="[window-close]", bring_to_front=False)
         event.accept()
 
 
