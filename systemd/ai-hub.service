@@ -1,0 +1,26 @@
+[Unit]
+Description=AI Hub Launcher
+# 依赖图形会话，确保 DISPLAY / WAYLAND_DISPLAY 等变量已注入
+After=graphical-session.target
+PartOf=graphical-session.target
+# 防止异常时无限重启：10 秒内最多 5 次，超过则进入 failed
+StartLimitIntervalSec=10
+StartLimitBurst=5
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/ai-hub
+# 登录后延迟 10 秒再启动，避开 GNOME 首登时的资源高峰
+ExecStartPre=/bin/sleep 10
+ExecStart=/home/pi/.pyenv/versions/3.10.15/bin/python /home/pi/ai-hub/main.py
+# 关键：无论退出码为何都自动重启（包括误关窗口导致的正常退出 0）
+Restart=always
+RestartSec=3
+MemoryMax=512M
+# 停止服务时连同子进程（各 demo）一起回收，避免残留进程占用摄像头
+KillMode=control-group
+TimeoutStopSec=8
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=graphical-session.target
