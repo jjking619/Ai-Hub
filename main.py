@@ -3,6 +3,7 @@ import sys
 import webbrowser
 import subprocess
 import glob
+import shutil
 from urllib.parse import urlsplit, urlunsplit
 from dataclasses import dataclass
 from typing import Optional, List
@@ -853,41 +854,41 @@ class HubWindow(QMainWindow):
                 font-size: 17px;
             }
             QLabel#guideTip {
-                color: #0f172a;
-                border: 1px solid #bfdbfe;
+                color: #dbeafe;
+                border: 1px solid #3b82f6;
                 border-radius: 12px;
                 padding: 10px 12px;
-                background-color: #eff6ff;
+                background-color: #1e3a8a;
                 font-size: 16px;
                 font-weight: 600;
             }
             QLabel#guideTipSecondary {
-                color: #1e293b;
-                border: 1px solid #cbd5e1;
+                color: #cbd5e1;
+                border: 1px solid #475569;
                 border-radius: 12px;
                 padding: 9px 12px;
-                background-color: #f8fafc;
+                background-color: #0f172a;
                 font-size: 15px;
             }
             QFrame#guideCard {
-                border: 1px solid #cbd5e1;
+                border: 1px solid #334155;
                 border-radius: 14px;
-                background-color: #f8fafc;
+                background-color: #0b1328;
             }
             QLabel#guideCardIcon {
                 font-family: monospace;
                 font-size: 28px;
                 font-weight: 700;
-                color: #111827;
+                color: #dbeafe;
             }
             QLabel#guideCardTitle {
                 font-size: 19px;
                 font-weight: 800;
-                color: #0f172a;
+                color: #f8fafc;
             }
             QLabel#guideCardDesc {
                 font-size: 16px;
-                color: #334155;
+                color: #cbd5e1;
             }
             QListWidget {
                 border: 1px solid #334155;
@@ -1054,6 +1055,29 @@ class HubWindow(QMainWindow):
             pass
         return fallback_url or "http://127.0.0.1:28083"
 
+    def _open_url_fullscreen_preferred(self, target_url: str) -> bool:
+        candidates = ["firefox", "firefox-esr", "chromium-browser", "chromium", "google-chrome", "google-chrome-stable"]
+        for binary in candidates:
+            path = shutil.which(binary)
+            if not path:
+                continue
+            if "firefox" in binary:
+                launch_modes = (["--new-window", target_url],)
+            else:
+                launch_modes = (["--new-window", "--start-maximized", target_url], ["--new-window", target_url])
+            for args in launch_modes:
+                try:
+                    subprocess.Popen(
+                        [path, *args],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        start_new_session=True,
+                    )
+                    return True
+                except Exception:
+                    continue
+        return False
+
     def on_app_selected(self, _row: int):
         spec = self._selected_spec()
         if not spec:
@@ -1122,7 +1146,10 @@ class HubWindow(QMainWindow):
             target_url = spec.launch_url or "http://127.0.0.1:28083"
             if spec.app_id == "ai_nas":
                 target_url = self._resolve_ai_nas_url(target_url)
-            if not QDesktopServices.openUrl(QUrl(target_url)):
+            opened = False
+            if spec.app_id == "ai_nas":
+                opened = self._open_url_fullscreen_preferred(target_url)
+            if not opened and not QDesktopServices.openUrl(QUrl(target_url)):
                 webbrowser.open(target_url)
             self.proc_log.append(f"[open] {target_url}")
             return

@@ -10,8 +10,8 @@ StartLimitBurst=5
 [Service]
 Type=simple
 WorkingDirectory=/home/pi/ai-hub
-# 登录后延迟 10 秒再启动，避开 GNOME 首登时的资源高峰
-ExecStartPre=/bin/sleep 10
+# 登录后延迟 5 秒再启动，避开 GNOME 首登时的资源高峰
+ExecStartPre=/bin/sleep 5
 ExecStart=/home/pi/.pyenv/versions/3.10.15/bin/python /home/pi/ai-hub/main.py
 # 关键：无论退出码为何都自动重启（包括误关窗口导致的正常退出 0）
 Restart=always

@@ -196,6 +196,20 @@ AppSpec(
 - ⚠️ **路径为绝对路径**：`APP_SPECS` 中默认写死 `/home/pi/...`。换机器或换用户部署时，**必须**按实际位置修改 `script`、`cwd`、`python_bin` 与 `preview_image`。
 - ⚠️ **智能 NAS 需先行部署**：该模块依赖 CasaOS、OpenClaw 等容器服务与 `voice-bridge` 服务，使用前请先在项目目录执行 `./install.sh`。
 - ⚠️ **人脸变换需虚拟环境**：其入口 `start.sh` 依赖 `/home/pi/Project/.venv`，首次运行会自动创建虚拟环境，但依赖包需另行安装。
+- ⚠️ **systemd 自启配置生效路径**：AI Hub 当前以**用户级服务**运行，实际生效文件是 `~/.config/systemd/user/ai-hub.service`，不是仓库内的 `ai-hub/systemd/ai-hub.service` 模板。若你修改了模板（例如 `ExecStartPre=/bin/sleep 5`），请同步并重载：
+
+  ```bash
+  cp /home/pi/ai-hub/systemd/ai-hub.service /home/pi/.config/systemd/user/ai-hub.service
+  systemctl --user daemon-reload
+  systemctl --user restart ai-hub
+  systemctl --user status ai-hub --no-pager -l
+  ```
+
+  可用以下命令确认是否真的生效：
+
+  ```bash
+  systemctl --user cat ai-hub | grep -n "ExecStartPre"
+  ```
 - 📌 **预览图缺失不影响使用**：未找到预览图时界面显示「暂无预览图」，功能不受影响。
 - 📌 **仅支持单模块运行**：如需同时演示多个模块，请分别手动启动。
 
