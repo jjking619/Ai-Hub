@@ -174,20 +174,24 @@ APP_GUIDES = {
     },
     "ai_nas": {
         "zh": [
-            "操作方式: 在 CasaOS 打开Voice Assistant，直接输入文本指令",
-            "语音方式: 先说唤醒词\"小远同学\"，再说出任务",
-            "测试项1: 下载测试视频并播放",
-            "测试项2: 帮我把家庭相册的照片分类，先预览",
-            "测试项3: 把家庭相册下的照片加复古滤镜，先预览",
-            "测试项4: 住房合同在哪",
+            "入口: 在 CasaOS 打开 Voice Assistant",
+            "语音方式 1: 点击\"说一句\"按钮后说话",
+            "语音方式 2: 呼叫\"小远同学\"唤醒后说话",
+            "文本方式: 也可以直接打字输入",
+            "文档: 住房合同在哪 / 合同甲方是谁 / 合同编号是多少 / 合同关键日期",
+            "照片: 找海边的照片 / 找猫或动物的照片 / 相册自动分类 / 加复古滤镜",
+            "影音: 下载测试视频 / 播放 oceans",
+            "问NAS: 你能做什么 / NAS里有什么",
         ],
         "en": [
-            "How to use: Open the Voice Assistant from CasaOS and type commands directly",
-            "Voice entry: Say wake word \"xiaoyuantongxue\" first, then speak your task",
-            "Test 1: Download the test video and play it",
-            "Test 2: Please classify the family album photos, preview first",
-            "Test 3: Please add a vintage filter to the family album photos, preview first",
-            "Test 4: Where is the housing contract?",
+            "Entry: Open Voice Assistant in CasaOS",
+            "Voice mode 1: Tap \"Say One Sentence\" and then speak",
+            "Voice mode 2: Say wake word \"xiaoyuantongxue\" and then speak",
+            "Text mode: You can also type directly",
+            "Docs: Where is the housing contract / Who is Party A / What is the contract ID / Key contract dates",
+            "Photos: Find beach photos / Find cat or animal photos / Auto classify album / Add vintage filter",
+            "Media: Download test video / Play oceans",
+            "Ask NAS: What can you do / What is in NAS",
         ],
     },
 }
@@ -200,12 +204,12 @@ APP_CARD_GUIDES = {
             "tip": "提示: 请在摄像头前方 0.5 ~ 1 米处操作，手部置于画面中央",
             "tip2": "建议: 每个手势动作后有短暂冷却，请等待反馈再进行下一次操作",
             "cards": [
-                {"icon_path": "/home/pi/ai-hub/asset/gesture_fist.svg", "title": "握拳", "desc": "暂停"},
-                {"icon_path": "/home/pi/ai-hub/asset/gesture_palm.svg", "title": "张开手掌", "desc": "播放"},
-                {"icon_path": "/home/pi/ai-hub/asset/gesture_left.svg", "title": "食指左滑", "desc": "抬起食指，整只手向左滑动（快退 5 秒）"},
-                {"icon_path": "/home/pi/ai-hub/asset/gesture_right.svg", "title": "食指右滑", "desc": "抬起食指，整只手向右滑动（快进 5 秒）"},
-                {"icon_path": "/home/pi/ai-hub/asset/gesture_up.svg", "title": "食指上滑", "desc": "音量 +5%"},
-                {"icon_path": "/home/pi/ai-hub/asset/gesture_down.svg", "title": "食指下滑", "desc": "音量 -5%"},
+                {"icon_path": "/home/pi/ai-hub/asset/gesture_fist.svg", "title": "握拳", "desc": "暂停 · 五指收起，拳面朝向摄像头"},
+                {"icon_path": "/home/pi/ai-hub/asset/gesture_palm.svg", "title": "张开手掌", "desc": "播放 · 五指自然分开，掌心朝向摄像头"},
+                {"icon_path": "/home/pi/ai-hub/asset/gesture_left.svg", "title": "食指左滑", "desc": "快退 5 秒 · 食指竖起比作“1”，整只手向左滑动"},
+                {"icon_path": "/home/pi/ai-hub/asset/gesture_right.svg", "title": "食指右滑", "desc": "快进 5 秒 · 食指竖起比作“1”，整只手向右滑动"},
+                {"icon_path": "/home/pi/ai-hub/asset/gesture_up.svg", "title": "食指上滑", "desc": "音量 +5% · 食指竖起比作“1”，整只手向上滑动"},
+                {"icon_path": "/home/pi/ai-hub/asset/gesture_down.svg", "title": "食指下滑", "desc": "音量 -5% · 食指竖起比作“1”，整只手向下滑动"},
             ],
         },
         "en": {
@@ -213,12 +217,12 @@ APP_CARD_GUIDES = {
             "tip": "Tip: Stand 0.5 - 1 m from camera, keep hand in frame center",
             "tip2": "Note: A brief cooldown follows each gesture, wait for feedback before next action",
             "cards": [
-                {"icon_path": "/home/pi/ai-hub/asset/gesture_fist.svg", "title": "Fist", "desc": "Pause"},
-                {"icon_path": "/home/pi/ai-hub/asset/gesture_palm.svg", "title": "Open Palm", "desc": "Play"},
-                {"icon_path": "/home/pi/ai-hub/asset/gesture_left.svg", "title": "Swipe Left", "desc": "Raise index finger and move whole hand left (Rewind 5s)"},
-                {"icon_path": "/home/pi/ai-hub/asset/gesture_right.svg", "title": "Swipe Right", "desc": "Raise index finger and move whole hand right (Forward 5s)"},
-                {"icon_path": "/home/pi/ai-hub/asset/gesture_up.svg", "title": "Swipe Up", "desc": "Volume +5%"},
-                {"icon_path": "/home/pi/ai-hub/asset/gesture_down.svg", "title": "Swipe Down", "desc": "Volume -5%"},
+                {"icon_path": "/home/pi/ai-hub/asset/gesture_fist.svg", "title": "Fist", "desc": "Pause · Close all five fingers, fist facing the camera"},
+                {"icon_path": "/home/pi/ai-hub/asset/gesture_palm.svg", "title": "Open Palm", "desc": "Play · Spread all five fingers, palm facing the camera"},
+                {"icon_path": "/home/pi/ai-hub/asset/gesture_left.svg", "title": "Swipe Left", "desc": "Rewind 5s · Raise the index finger like “1” and move the whole hand left"},
+                {"icon_path": "/home/pi/ai-hub/asset/gesture_right.svg", "title": "Swipe Right", "desc": "Forward 5s · Raise the index finger like “1” and move the whole hand right"},
+                {"icon_path": "/home/pi/ai-hub/asset/gesture_up.svg", "title": "Swipe Up", "desc": "Volume +5% · Raise the index finger like “1” and move the whole hand up"},
+                {"icon_path": "/home/pi/ai-hub/asset/gesture_down.svg", "title": "Swipe Down", "desc": "Volume -5% · Raise the index finger like “1” and move the whole hand down"},
             ],
         },
     },
@@ -293,24 +297,24 @@ APP_CARD_GUIDES = {
     "ai_nas": {
         "zh": {
             "show_icon": False,
-            "tip": "提示: 在 CasaOS 中打开Voice Assistant，可直接输入文本指令",
-            "tip2": "语音方式: 先说唤醒词“小远同学”，再说任务",
+            "tip": "提示：打开项目，点击“说一句”按钮后说话，或呼叫“小远同学”唤醒；也可以直接打字输入。",
+            "tip2": "",
             "cards": [
-                {"title": "测试项 1", "desc": "下载测试视频并播放"},
-                {"title": "测试项 2", "desc": "帮我把家庭相册的照片分类，先预览"},
-                {"title": "测试项 3", "desc": "把家庭相册下的照片加复古滤镜，先预览"},
-                {"title": "测试项 4", "desc": "住房合同在哪"},
+                {"title": "文档处理", "desc": "找文件 · 读合同 · 提要点\n例如：住房合同在哪？合同甲方是谁？"},
+                {"title": "照片管理", "desc": "搜图 · 分类 · 建相册 · 加滤镜\n例如：找海边的照片，或把照片自动分类"},
+                {"title": "影音管理", "desc": "下载 · 查找 · 播放\n例如：下载测试视频，或播放 oceans"},
+                {"title": "NAS 问答", "desc": "随时提问，了解 NAS 内容与能力\n例如：你能做什么？NAS 里有什么？"},
             ],
         },
         "en": {
             "show_icon": False,
-            "tip": "Tip: Open the Voice Assistant in CasaOS or type commands directly",
-            "tip2": "Voice entry: Say wake word xiaoyuantongxue, then speak your task",
+            "tip": "Tip: Open the project, then tap \"Say One Sentence\" and speak, or say \"xiaoyuantongxue\" to wake it; you can also type directly.",
+            "tip2": "",
             "cards": [
-                {"title": "Test 1", "desc": "Download the test video and play it"},
-                {"title": "Test 2", "desc": "Please classify family album photos, preview first"},
-                {"title": "Test 3", "desc": "Please add a vintage filter, preview first"},
-                {"title": "Test 4", "desc": "Where is the housing contract?"},
+                {"title": "Document Tasks", "desc": "Find files · Read contracts · Summarize\nExample: Where is the housing contract? Who is Party A?"},
+                {"title": "Photo Management", "desc": "Search · Classify · Create albums · Filters\nExample: Find beach photos or classify the album"},
+                {"title": "Media Management", "desc": "Download · Find · Play\nExample: Download the test video or play oceans"},
+                {"title": "Ask NAS", "desc": "Ask about NAS content and capabilities\nExample: What can you do? What is in NAS?"},
             ],
         },
     },
@@ -397,7 +401,7 @@ APP_SPECS: List[AppSpec] = [
         order=5,
         title="智能NAS系统",
         title_en="Smart NAS",
-        intro="围绕 CasaOS 与 OpenClaw 构建的智能 NAS 助手，整合文件管理、知识检索、媒体下载和语音交互能力，支持自然语言发起任务，帮助用户快速完成内容查找、资源获取与日常办公协同。",
+        intro="智能NAS系统以CasaOS服务、OpenClaw智能体为核心，通过语音或文本下达指令，系统自动规划并调用工具，完成文件管理、相册整理、影音下载、知识问答与图片处理，带来“一句话搞定”的智能交互体验。",
         intro_en="A smart NAS assistant built on CasaOS and OpenClaw, combining file management, knowledge search, media download, and voice interaction. It can handle natural-language tasks to help users search, retrieve, and manage digital content efficiently.",
         kind="services",
         launch_url="http://127.0.0.1:28083",
@@ -636,10 +640,15 @@ class NasPanel(QWidget):
             return
 
         data = card_table.get(self.lang) or card_table.get("zh") or {}
-        self.guide_tip.setText(data.get("tip", ""))
-        tip2 = data.get("tip2", "")
-        self.guide_tip2.setText(tip2)
-        self.guide_tip2.setVisible(bool(tip2))
+        tip = (data.get("tip", "") or "").strip()
+        tip2 = (data.get("tip2", "") or "").strip()
+        if tip and tip2:
+            merged_tip = f"{tip}\n{tip2}"
+        else:
+            merged_tip = tip or tip2
+        self.guide_tip.setText(merged_tip)
+        self.guide_tip2.clear()
+        self.guide_tip2.setVisible(False)
 
         show_icon = bool(data.get("show_icon", True))
         cards = data.get("cards", [])
@@ -734,6 +743,7 @@ class HubWindow(QMainWindow):
 
         # App details: intro only, actions are moved to preview toolbar.
         self.header_group = QGroupBox()
+        self.header_group.setObjectName("appDetailsPanel")
         header_layout = QVBoxLayout(self.header_group)
 
         self.open_btn = QPushButton(T(self.lang, "open"))
@@ -749,6 +759,7 @@ class HubWindow(QMainWindow):
         self.lang_btn.clicked.connect(self.toggle_language)
 
         self.desc_label = QLabel("")
+        self.desc_label.setObjectName("appDetailsText")
         self.desc_label.setWordWrap(True)
         self.badge_label = QLabel("")
         self.badge_label.setObjectName("statusValue")
@@ -819,7 +830,7 @@ class HubWindow(QMainWindow):
         self.setStyleSheet(
             """
             QMainWindow { background-color: #060b1a; }
-            QWidget { color: #e2e8f0; font-family: 'DejaVu Sans'; font-size: 15px; }
+            QWidget { color: #e2e8f0; font-family: 'DejaVu Sans'; font-size: 17px; }
             QGroupBox {
                 color: #f8fafc;
                 font-weight: 600;
@@ -830,6 +841,10 @@ class HubWindow(QMainWindow):
                 background-color: #0f172a;
             }
             QGroupBox::title { subcontrol-origin: margin; left: 14px; padding: 0 8px; }
+            QGroupBox#appDetailsPanel::title {
+                font-size: 21px;
+                font-weight: 800;
+            }
             QGroupBox#guidePanel {
                 background-color: #111827;
                 border: 1px solid #334155;
@@ -837,7 +852,7 @@ class HubWindow(QMainWindow):
             }
             QGroupBox#guidePanel::title {
                 color: #f8fafc;
-                font-size: 18px;
+                font-size: 22px;
                 font-weight: 800;
                 left: 14px;
             }
@@ -851,7 +866,11 @@ class HubWindow(QMainWindow):
             QLabel#guideText {
                 color: #e2e8f0;
                 line-height: 1.55;
-                font-size: 17px;
+                font-size: 20px;
+            }
+            QLabel#appDetailsText {
+                font-size: 19px;
+                line-height: 1.5;
             }
             QLabel#guideTip {
                 color: #dbeafe;
@@ -859,7 +878,7 @@ class HubWindow(QMainWindow):
                 border-radius: 12px;
                 padding: 10px 12px;
                 background-color: #1e3a8a;
-                font-size: 16px;
+                font-size: 18px;
                 font-weight: 600;
             }
             QLabel#guideTipSecondary {
@@ -868,7 +887,7 @@ class HubWindow(QMainWindow):
                 border-radius: 12px;
                 padding: 9px 12px;
                 background-color: #0f172a;
-                font-size: 15px;
+                font-size: 16px;
             }
             QFrame#guideCard {
                 border: 1px solid #334155;
@@ -882,12 +901,12 @@ class HubWindow(QMainWindow):
                 color: #dbeafe;
             }
             QLabel#guideCardTitle {
-                font-size: 19px;
+                font-size: 20px;
                 font-weight: 800;
                 color: #f8fafc;
             }
             QLabel#guideCardDesc {
-                font-size: 16px;
+                font-size: 18px;
                 color: #cbd5e1;
             }
             QListWidget {
@@ -903,6 +922,7 @@ class HubWindow(QMainWindow):
                 border-radius: 10px;
                 background-color: #111b33;
                 min-height: 28px;
+                font-size: 20px;
             }
             QListWidget::item:selected {
                 background-color: #1d4ed8;
@@ -921,7 +941,7 @@ class HubWindow(QMainWindow):
             QPushButton:pressed { background-color: #111827; }
             QPushButton:disabled { color: #64748b; border-color: #1e293b; }
             QPushButton#openButton {
-                font-size: 16px;
+                font-size: 17px;
                 font-weight: 800;
                 padding: 9px 18px;
                 background-color: #2563eb;
@@ -931,7 +951,7 @@ class HubWindow(QMainWindow):
             QPushButton#openButton:hover { background-color: #1d4ed8; }
             QPushButton#openButton:pressed { background-color: #1e40af; }
             QPushButton#langButton {
-                font-size: 15px;
+                font-size: 16px;
                 font-weight: 700;
                 padding: 8px 12px;
                 background-color: #1e3a8a;
