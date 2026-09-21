@@ -1289,7 +1289,7 @@ def main():
         return 1
 
     window = HubWindow()
-    window.show()
+    window.showFullScreen()
     exit_code = app.exec()
     lock.unlock()
     return exit_code
