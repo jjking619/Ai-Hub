@@ -377,7 +377,7 @@ APP_SPECS: List[AppSpec] = [
         app_id="gesture_remote",
         order=1,
         title="手势遥控器",
-        title_en="Gesture Remote",
+        title_en="Gesture Remote Control",
         intro="基于实时手势识别的无接触式视频控制方案，支持手掌检测和滑动手势，可在本地完成播放、暂停、快进、回退与音量调节，适合在展示场景和家用娱乐中实现自然交互。",
         intro_en="A touch-free video control solution powered by real-time hand tracking. It detects palm posture and swipe gestures to play, pause, seek, and adjust volume locally with low latency and a natural interaction experience.",
         kind="process",
@@ -390,7 +390,7 @@ APP_SPECS: List[AppSpec] = [
         app_id="eye_remote",
         order=2,
         title="眼控遥控器",
-        title_en="Eye Remote",
+        title_en="Eye Remote Control",
         intro="利用实时眼部状态检测和视线判断技术，用户注视屏幕时自动继续播放，闭眼或移开视线时自动暂停，适合无手操作的视频观看与沉浸式体验。",
         intro_en="Uses real-time eye-state and gaze detection to keep a video playing while you look at the screen and pause automatically when you blink or look away, enabling hands-free and immersive viewing.",
         kind="process",
@@ -403,7 +403,7 @@ APP_SPECS: List[AppSpec] = [
         app_id="ranging",
         order=3,
         title="双目测距",
-        title_en="Stereo Ranging",
+        title_en="Camera Distance Measurement",
         intro="结合双目摄像头、标定参数与 SGBM 立体匹配算法，支持点击任意目标区域实时测量与相机的真实距离，并可切换左右相机预览与参数调优，适合教学、实验和原型评估场景。",
         intro_en="Combines dual-camera input, calibration parameters, and SGBM stereo matching to measure the real-world distance of any clicked point while supporting left/right preview and parameter tuning for higher accuracy in teaching, experiments, and prototyping.",
         kind="process",
@@ -429,7 +429,7 @@ APP_SPECS: List[AppSpec] = [
         app_id="ai_nas",
         order=5,
         title="智能NAS系统",
-        title_en="Smart NAS",
+        title_en="Smart NAS System",
         intro="智能NAS系统以CasaOS服务、OpenClaw智能体为核心，通过语音或文本下达指令，系统自动规划并调用工具，完成文件管理、相册整理、影音下载、知识问答与图片处理，带来“一句话搞定”的智能交互体验。",
         intro_en="A smart NAS assistant built on CasaOS and OpenClaw, combining file management, knowledge search, media download, and voice interaction. It can handle natural-language tasks to help users search, retrieve, and manage digital content efficiently.",
         kind="services",
@@ -747,7 +747,8 @@ class SystemStatusPanel(QGroupBox):
         hw_layout.setContentsMargins(12, 12, 12, 12)
         hw_layout.setHorizontalSpacing(10)
         hw_layout.setVerticalSpacing(8)
-        hw_layout.setColumnMinimumWidth(0, 84)
+
+        hw_layout.setColumnMinimumWidth(0, 128)
         hw_layout.setColumnStretch(0, 0)
         hw_layout.setColumnStretch(1, 1)
 
@@ -768,7 +769,7 @@ class SystemStatusPanel(QGroupBox):
         for row, key in enumerate(keys):
             name_label = self.hw_labels[key]
             name_label.setObjectName("statusLabel")
-            name_label.setFixedWidth(86)
+            name_label.setFixedWidth(128)
             value_label = self.hw_values[key]
             value_label.setObjectName("statusValueText")
             value_label.setWordWrap(False)
@@ -776,7 +777,7 @@ class SystemStatusPanel(QGroupBox):
             hw_layout.addWidget(name_label, row, 0, Qt.AlignVCenter)
             hw_layout.addWidget(value_label, row, 1, Qt.AlignVCenter)
 
-        hw_layout.setColumnMinimumWidth(0, 86)
+        hw_layout.setColumnMinimumWidth(0, 128)
         hw_layout.setColumnStretch(1, 1)
 
         root.addWidget(self.memory_group, 2)
@@ -1075,7 +1076,7 @@ class HubWindow(QMainWindow):
         root.setSpacing(16)
 
         sidebar = QGroupBox()
-        sidebar.setFixedWidth(280)
+        sidebar.setFixedWidth(380)
         side_layout = QVBoxLayout(sidebar)
         side_layout.setContentsMargins(16, 16, 16, 16)
         side_layout.setSpacing(10)
@@ -1106,6 +1107,8 @@ class HubWindow(QMainWindow):
         self.sub_label.setObjectName("muted")
 
         self.list_widget = QListWidget()
+        self.list_widget.setWordWrap(True)
+        self.list_widget.setTextElideMode(Qt.ElideNone)
         self.list_widget.currentRowChanged.connect(self.on_app_selected)
 
         for spec in self.apps:
@@ -1309,11 +1312,11 @@ class HubWindow(QMainWindow):
             QListWidget::item {
                 border: 1px solid #334155;
                 margin: 4px;
-                padding: 10px;
-                border-radius: 10px;
+                padding: 6px;
+                border-radius: 8px;
                 background-color: #111b33;
                 min-height: 28px;
-                font-size: 20px;
+                font-size: 16px;
             }
             QListWidget::item:selected {
                 background-color: #1d4ed8;
@@ -1391,33 +1394,33 @@ class HubWindow(QMainWindow):
                 margin-top: 8px;
             }
             QGroupBox#statusSubGroup::title {
-                font-size: 15px;
+                font-size: 18px;
                 font-weight: 700;
                 left: 10px;
             }
             QLabel#statusLabel {
                 color: #bfdbfe;
-                font-size: 14px;
+                font-size: 18px;
                 font-weight: 700;
             }
             QLabel#statusValueText {
                 color: #e2e8f0;
-                font-size: 14px;
+                font-size: 18px;
                 font-weight: 600;
             }
             QLabel#statusValueRam {
                 color: #86efac;
-                font-size: 14px;
+                font-size: 18px;
                 font-weight: 700;
             }
             QLabel#statusValueDisk {
                 color: #7dd3fc;
-                font-size: 14px;
+                font-size: 18px;
                 font-weight: 700;
             }
             QLabel#statusValueCpu {
                 color: #fdba74;
-                font-size: 14px;
+                font-size: 18px;
                 font-weight: 700;
             }
             QProgressBar#statusBar {
