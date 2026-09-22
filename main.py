@@ -838,7 +838,7 @@ class SystemStatusPanel(QGroupBox):
         self._set_metric("cpu", cpu_pct)
 
         # Showroom mode: keep hardware labels fixed and stable.
-        self.hw_values["chip"].setText("Qualcomm QCM6490")
+        self.hw_values["chip"].setText("Qualcomm QCS6490")
         self.hw_values["device"].setText("Quectel Pi H1")
         self.hw_values["os"].setText("Debian GNU/Linux 13 (trixie)")
         self.hw_values["cpu_model"].setText("4x Cortex-A55 + 4x Cortex-A78")
