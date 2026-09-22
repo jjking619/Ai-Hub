@@ -4,12 +4,13 @@ import webbrowser
 import subprocess
 import glob
 import shutil
+import platform
 from urllib.parse import urlsplit, urlunsplit
 from dataclasses import dataclass
 from typing import Optional, List
 
 from PySide6.QtCore import Qt, QProcess, QProcessEnvironment, QLockFile, QSettings, QUrl, QTimer
-from PySide6.QtGui import QDesktopServices, QPixmap
+from PySide6.QtGui import QDesktopServices, QPixmap, QImage, QColor
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -25,6 +26,8 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QFrame,
     QTextEdit,
+    QProgressBar,
+    QStackedWidget,
 )
 
 SETTINGS_ORG = "ai-hub"
@@ -43,6 +46,19 @@ STRINGS = {
         "no_preview": "暂无预览图",
         "preview_missing": "未找到可用图片",
         "proc_log": "子进程日志",
+        "system_status": "系统状态",
+        "memory": "内存与容量",
+        "hardware": "硬件信息",
+        "ram": "RAM",
+        "disk": "磁盘",
+        "cpu": "CPU",
+        "npu": "NPU",
+        "chip": "芯片",
+        "device": "设备",
+        "os": "系统",
+        "kernel": "内核",
+        "cpu_model": "CPU 型号",
+        "unknown": "未知",
         "show_log": "显示日志",
         "hide_log": "隐藏日志",
         "notice": "提示",
@@ -68,6 +84,19 @@ STRINGS = {
         "no_preview": "No preview available",
         "preview_missing": "Preview image not found",
         "proc_log": "Process log",
+        "system_status": "System Status",
+        "memory": "Memory & Capacity",
+        "hardware": "Hardware",
+        "ram": "RAM",
+        "disk": "Disk",
+        "cpu": "CPU",
+        "npu": "NPU",
+        "chip": "Chip",
+        "device": "Device",
+        "os": "OS",
+        "kernel": "Kernel",
+        "cpu_model": "CPU Model",
+        "unknown": "Unknown",
         "show_log": "Show log",
         "hide_log": "Hide log",
         "notice": "Notice",
@@ -97,8 +126,8 @@ def T(lang: str, key: str, **kwargs) -> str:
 
 
 def load_lang() -> str:
-    value = QSettings(SETTINGS_ORG, SETTINGS_APP).value("lang", "zh")
-    return "en" if str(value).strip().lower().startswith("en") else "zh"
+    value = QSettings(SETTINGS_ORG, SETTINGS_APP).value("lang", "en")
+    return "zh" if str(value).strip().lower().startswith("zh") else "en"
 
 
 def save_lang(lang: str) -> None:
@@ -297,8 +326,8 @@ APP_CARD_GUIDES = {
     "ai_nas": {
         "zh": {
             "show_icon": False,
-            "tip": "提示：打开项目，点击“说一句”按钮后说话，或呼叫“小远同学”唤醒；也可以直接打字输入。",
-            "tip2": "",
+            "tip": "提示: 打开项目后，点击\"说一句\"按钮说话，或呼叫\"小远同学\"唤醒",
+            "tip2": "建议: 语音环境尽量安静；也可以直接使用文本输入",
             "cards": [
                 {"title": "文档处理", "desc": "找文件 · 读合同 · 提要点\n例如：住房合同在哪？合同甲方是谁？"},
                 {"title": "照片管理", "desc": "搜图 · 分类 · 建相册 · 加滤镜\n例如：找海边的照片，或把照片自动分类"},
@@ -308,8 +337,8 @@ APP_CARD_GUIDES = {
         },
         "en": {
             "show_icon": False,
-            "tip": "Tip: Open the project, then tap \"Say One Sentence\" and speak, or say \"xiaoyuantongxue\" to wake it; you can also type directly.",
-            "tip2": "",
+            "tip": "Tip: Open the project, tap \"Say One Sentence\" to speak, or use the wake word",
+            "tip2": "Note: Use a quiet environment for better ASR, or type directly",
             "cards": [
                 {"title": "Document Tasks", "desc": "Find files · Read contracts · Summarize\nExample: Where is the housing contract? Who is Party A?"},
                 {"title": "Photo Management", "desc": "Search · Classify · Create albums · Filters\nExample: Find beach photos or classify the album"},
@@ -675,6 +704,338 @@ class NasPanel(QWidget):
                 card["frame"].setVisible(False)
 
 
+class SystemStatusPanel(QGroupBox):
+    def __init__(self, lang: str, parent=None):
+        super().__init__(parent)
+        self.lang = lang
+        self._cpu_prev_total = 0
+        self._cpu_prev_idle = 0
+
+        self.setObjectName("systemStatusPanel")
+        self._build_ui()
+        self.set_language(lang)
+
+        self.refresh_timer = QTimer(self)
+        self.refresh_timer.setInterval(2000)
+        self.refresh_timer.timeout.connect(self.refresh)
+        self.refresh_timer.start()
+        self.refresh()
+
+    def _build_ui(self):
+        root = QHBoxLayout(self)
+        root.setContentsMargins(12, 12, 12, 12)
+        root.setSpacing(12)
+
+        self.memory_group = QGroupBox()
+        self.memory_group.setObjectName("statusSubGroup")
+        mem_layout = QVBoxLayout(self.memory_group)
+        mem_layout.setContentsMargins(12, 12, 12, 12)
+        mem_layout.setSpacing(10)
+
+        self.metric_rows = {
+            "ram": self._create_metric_row("ram"),
+            "disk": self._create_metric_row("disk"),
+            "cpu": self._create_metric_row("cpu"),
+        }
+        for key in ("ram", "disk", "cpu"):
+            row = self.metric_rows[key]
+            mem_layout.addWidget(row["wrap"])
+
+        self.hardware_group = QGroupBox()
+        self.hardware_group.setObjectName("statusSubGroup")
+        hw_layout = QGridLayout(self.hardware_group)
+        hw_layout.setContentsMargins(12, 12, 12, 12)
+        hw_layout.setHorizontalSpacing(10)
+        hw_layout.setVerticalSpacing(8)
+        hw_layout.setColumnMinimumWidth(0, 84)
+        hw_layout.setColumnStretch(0, 0)
+        hw_layout.setColumnStretch(1, 1)
+
+        self.hw_labels = {
+            "chip": QLabel(),
+            "device": QLabel(),
+            "os": QLabel(),
+            "cpu_model": QLabel(),
+        }
+        self.hw_values = {
+            "chip": QLabel(),
+            "device": QLabel(),
+            "os": QLabel(),
+            "cpu_model": QLabel(),
+        }
+
+        keys = ("chip", "device", "os", "cpu_model")
+        for row, key in enumerate(keys):
+            name_label = self.hw_labels[key]
+            name_label.setObjectName("statusLabel")
+            name_label.setFixedWidth(86)
+            value_label = self.hw_values[key]
+            value_label.setObjectName("statusValueText")
+            value_label.setWordWrap(False)
+            value_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            hw_layout.addWidget(name_label, row, 0, Qt.AlignVCenter)
+            hw_layout.addWidget(value_label, row, 1, Qt.AlignVCenter)
+
+        hw_layout.setColumnMinimumWidth(0, 86)
+        hw_layout.setColumnStretch(1, 1)
+
+        root.addWidget(self.memory_group, 2)
+        root.addWidget(self.hardware_group, 3)
+
+    def _create_metric_row(self, key: str):
+        wrap = QWidget()
+        layout = QHBoxLayout(wrap)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+
+        name = QLabel()
+        name.setObjectName("statusLabel")
+        name.setFixedWidth(52)
+
+        bar = QProgressBar()
+        bar.setRange(0, 100)
+        bar.setValue(0)
+        bar.setTextVisible(False)
+        bar_name = {
+            "ram": "statusBarRam",
+            "disk": "statusBarDisk",
+            "cpu": "statusBarCpu",
+        }.get(key, "statusBar")
+        bar.setObjectName(bar_name)
+
+        value = QLabel("--")
+        value_name = {
+            "ram": "statusValueRam",
+            "disk": "statusValueDisk",
+            "cpu": "statusValueCpu",
+        }.get(key, "statusValueText")
+        value.setObjectName(value_name)
+        value.setFixedWidth(56)
+        value.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+        layout.addWidget(name)
+        layout.addWidget(bar, 1)
+        layout.addWidget(value)
+        return {"wrap": wrap, "name": name, "bar": bar, "value": value}
+
+    def set_language(self, lang: str):
+        self.lang = lang
+        self.setTitle(T(lang, "system_status"))
+        self.memory_group.setTitle(T(lang, "memory"))
+        self.hardware_group.setTitle(T(lang, "hardware"))
+        for key in ("ram", "disk", "cpu"):
+            self.metric_rows[key]["name"].setText(T(lang, key))
+        for key in ("chip", "device", "os", "cpu_model"):
+            self.hw_labels[key].setText(f"{T(lang, key)}:")
+
+    def refresh(self):
+        ram_pct = self._read_ram_percent()
+        disk_pct = self._read_disk_percent()
+        cpu_pct = self._read_cpu_percent()
+
+        self._set_metric("ram", ram_pct)
+        self._set_metric("disk", disk_pct)
+        self._set_metric("cpu", cpu_pct)
+
+        # Showroom mode: keep hardware labels fixed and stable.
+        self.hw_values["chip"].setText("Qualcomm QCM6490")
+        self.hw_values["device"].setText("Quectel Pi H1")
+        self.hw_values["os"].setText("Debian GNU/Linux 13 (trixie)")
+        self.hw_values["cpu_model"].setText("4x Cortex-A55 + 4x Cortex-A78")
+
+    def _set_metric(self, key: str, value: Optional[float]):
+        row = self.metric_rows[key]
+        if value is None:
+            row["bar"].setValue(0)
+            row["value"].setText("--")
+            return
+        pct = max(0, min(100, int(round(value))))
+        row["bar"].setValue(pct)
+        row["value"].setText(f"{pct}%")
+
+    def _read_ram_percent(self) -> Optional[float]:
+        info = {}
+        try:
+            with open("/proc/meminfo", "r", encoding="utf-8", errors="ignore") as fp:
+                for line in fp:
+                    if ":" not in line:
+                        continue
+                    k, v = line.split(":", 1)
+                    parts = v.strip().split()
+                    if parts:
+                        info[k] = int(parts[0])
+            total = info.get("MemTotal", 0)
+            avail = info.get("MemAvailable", 0)
+            if total <= 0:
+                return None
+            used = max(0, total - avail)
+            return used * 100.0 / total
+        except Exception:
+            return None
+
+    def _read_disk_percent(self) -> Optional[float]:
+        try:
+            usage = shutil.disk_usage("/")
+            if usage.total <= 0:
+                return None
+            return usage.used * 100.0 / usage.total
+        except Exception:
+            return None
+
+    def _read_cpu_percent(self) -> Optional[float]:
+        try:
+            with open("/proc/stat", "r", encoding="utf-8", errors="ignore") as fp:
+                first = fp.readline().strip()
+            if not first.startswith("cpu "):
+                return None
+            values = [int(x) for x in first.split()[1:]]
+            if len(values) < 4:
+                return None
+            idle = values[3] + (values[4] if len(values) > 4 else 0)
+            total = sum(values)
+            if self._cpu_prev_total == 0:
+                self._cpu_prev_total = total
+                self._cpu_prev_idle = idle
+                return 0.0
+            delta_total = total - self._cpu_prev_total
+            delta_idle = idle - self._cpu_prev_idle
+            self._cpu_prev_total = total
+            self._cpu_prev_idle = idle
+            if delta_total <= 0:
+                return None
+            return max(0.0, (delta_total - delta_idle) * 100.0 / delta_total)
+        except Exception:
+            return None
+
+    def _read_npu_percent(self) -> Optional[float]:
+        for path in (
+            "/sys/class/qcom-npu/load",
+            "/sys/class/devfreq/soc:qcom-npu/load",
+            "/sys/class/devfreq/soc:qcom-nsp/load",
+        ):
+            try:
+                if not os.path.exists(path):
+                    continue
+                text = open(path, "r", encoding="utf-8", errors="ignore").read().strip()
+                if not text:
+                    continue
+                raw = float(text)
+                return raw / 10.0 if raw > 100 else raw
+            except Exception:
+                continue
+        return None
+
+    def _read_device_info(self):
+        unknown = T(self.lang, "unknown")
+        model = ""
+        for path in ("/proc/device-tree/model", "/sys/firmware/devicetree/base/model"):
+            try:
+                if os.path.exists(path):
+                    model = open(path, "r", encoding="utf-8", errors="ignore").read().replace("\x00", "").strip()
+                    if model:
+                        break
+            except Exception:
+                continue
+        if not model:
+            model = unknown
+
+        if model.lower() == "quectel technologies, inc. quecpi alpha":
+            model = "Quectel Pi H1"
+
+        chip = unknown
+        lower = model.lower()
+        if "qcm" in lower:
+            token = next((part for part in model.replace("/", " ").split() if part.lower().startswith("qcm")), "")
+            chip = token.upper() if token else "QCM"
+        elif "quecpi alpha" in lower:
+            chip = "Qualcomm QCM6490"
+        elif "sg560d" in lower:
+            chip = "Qualcomm QCM6490"
+        else:
+            cpu_info = self._read_cpuinfo_map()
+            for key in ("Hardware", "Model"):
+                value = cpu_info.get(key, "")
+                if value and value.lower() != "unknown":
+                    chip = value
+                    break
+
+        return chip, model
+
+    def _read_os_name(self) -> str:
+        unknown = T(self.lang, "unknown")
+        try:
+            with open("/etc/os-release", "r", encoding="utf-8", errors="ignore") as fp:
+                for line in fp:
+                    if line.startswith("PRETTY_NAME="):
+                        value = line.split("=", 1)[1].strip().strip('"')
+                        if value:
+                            return value
+        except Exception:
+            pass
+        return unknown
+
+    def _read_cpuinfo_map(self):
+        data = {}
+        try:
+            with open("/proc/cpuinfo", "r", encoding="utf-8", errors="ignore") as fp:
+                for line in fp:
+                    if ":" not in line:
+                        continue
+                    key, val = line.split(":", 1)
+                    key = key.strip()
+                    val = val.strip()
+                    if key and val and key not in data:
+                        data[key] = val
+        except Exception:
+            pass
+        return data
+
+    def _read_cpu_model(self) -> str:
+        unknown = T(self.lang, "unknown")
+        data = self._read_cpuinfo_map()
+        for key in ("model name", "Processor", "Hardware", "Model"):
+            value = data.get(key, "").strip()
+            if value:
+                return value
+        part_model = self._infer_cpu_model_from_parts()
+        if part_model:
+            return part_model
+        machine = platform.machine().strip()
+        if machine:
+            return machine
+        return unknown
+
+    def _infer_cpu_model_from_parts(self) -> str:
+        part_to_name = {
+            "0xd03": "Cortex-A53",
+            "0xd05": "Cortex-A55",
+            "0xd08": "Cortex-A72",
+            "0xd09": "Cortex-A73",
+            "0xd0a": "Cortex-A75",
+            "0xd0b": "Cortex-A76",
+            "0xd0d": "Cortex-A77",
+            "0xd41": "Cortex-A78",
+        }
+        counts = {}
+        try:
+            with open("/proc/cpuinfo", "r", encoding="utf-8", errors="ignore") as fp:
+                for line in fp:
+                    if not line.startswith("CPU part"):
+                        continue
+                    raw = line.split(":", 1)[1].strip().lower()
+                    name = part_to_name.get(raw)
+                    if not name:
+                        continue
+                    counts[name] = counts.get(name, 0) + 1
+        except Exception:
+            return ""
+
+        if not counts:
+            return ""
+        parts = [f"{count}x {name}" for name, count in sorted(counts.items(), key=lambda kv: kv[0])]
+        return " + ".join(parts)
+
+
 class HubWindow(QMainWindow):
     LAUNCH_OUTPUT_TIMEOUT_MS = 45000
     HANDOFF_DELAY_MS = 2200
@@ -719,8 +1080,28 @@ class HubWindow(QMainWindow):
         side_layout.setContentsMargins(16, 16, 16, 16)
         side_layout.setSpacing(10)
 
+        brand_row = QHBoxLayout()
+        brand_row.setContentsMargins(0, 0, 0, 0)
+        brand_row.setSpacing(10)
+
+        self.logo_label = QLabel("QUECTEL")
+        self.logo_label.setObjectName("brandLogo")
+        self.logo_label.setAlignment(Qt.AlignCenter)
+        self.logo_label.setFixedSize(146, 44)
+
+        logo_pix = QPixmap("/home/pi/ai-hub/asset/image.png")
+        if not logo_pix.isNull():
+            self.logo_label.setText("")
+            self.logo_label.setStyleSheet("background: transparent; border: none;")
+            logo_pix = self._make_logo_transparent(logo_pix)
+            self.logo_label.setPixmap(logo_pix.scaled(140, 40, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+
         title = QLabel("AI Hub")
         title.setStyleSheet("font-size: 23px; font-weight: 800;")
+        brand_row.addWidget(self.logo_label)
+        brand_row.addWidget(title)
+        brand_row.addStretch()
+
         self.sub_label = QLabel(T(self.lang, "modules"))
         self.sub_label.setObjectName("muted")
 
@@ -732,7 +1113,7 @@ class HubWindow(QMainWindow):
             item.setData(Qt.UserRole, spec.app_id)
             self.list_widget.addItem(item)
 
-        side_layout.addWidget(title)
+        side_layout.addLayout(brand_row)
         side_layout.addWidget(self.sub_label)
         side_layout.addWidget(self.list_widget, 1)
 
@@ -781,12 +1162,17 @@ class HubWindow(QMainWindow):
         self.proc_log.document().setMaximumBlockCount(2000)
         self.proc_log.setMinimumHeight(110)
         self.proc_log.setPlaceholderText(T(self.lang, "proc_log"))
-        self.proc_log.setVisible(True)
+
+        self.system_panel = SystemStatusPanel(self.lang, self)
+        self.log_stack = QStackedWidget()
+        self.log_stack.addWidget(self.system_panel)
+        self.log_stack.addWidget(self.proc_log)
+        self.log_stack.setCurrentWidget(self.system_panel)
 
         content_layout.addWidget(self.header_group)
         content_layout.addWidget(self.nas_panel, 3)
         content_layout.addWidget(self.log_toggle_btn)
-        content_layout.addWidget(self.proc_log, 1)
+        content_layout.addWidget(self.log_stack, 1)
         self._update_log_toggle()
 
         root.addWidget(sidebar)
@@ -801,6 +1187,7 @@ class HubWindow(QMainWindow):
         self.open_btn.setText(T(lang, "open"))
         self.lang_btn.setText(T(lang, "lang_button"))
         self.proc_log.setPlaceholderText(T(lang, "proc_log"))
+        self.system_panel.set_language(lang)
         self.nas_panel.set_language(lang)
         self._update_log_toggle()
 
@@ -815,10 +1202,14 @@ class HubWindow(QMainWindow):
         self.on_app_selected(row)
 
     def _update_log_toggle(self):
-        self.log_toggle_btn.setText(T(self.lang, "hide_log" if self.proc_log.isVisible() else "show_log"))
+        showing_log = self.log_stack.currentWidget() is self.proc_log
+        self.log_toggle_btn.setText(T(self.lang, "hide_log" if showing_log else "show_log"))
 
     def toggle_log_visibility(self):
-        self.proc_log.setVisible(not self.proc_log.isVisible())
+        if self.log_stack.currentWidget() is self.proc_log:
+            self.log_stack.setCurrentWidget(self.system_panel)
+        else:
+            self.log_stack.setCurrentWidget(self.proc_log)
         self._update_log_toggle()
 
     def toggle_language(self):
@@ -875,10 +1266,10 @@ class HubWindow(QMainWindow):
             QLabel#guideTip {
                 color: #dbeafe;
                 border: 1px solid #3b82f6;
-                border-radius: 12px;
-                padding: 10px 12px;
+                border-radius: 8px;
+                padding: 6px 8px;
                 background-color: #1e3a8a;
-                font-size: 18px;
+                font-size: 16px;
                 font-weight: 600;
             }
             QLabel#guideTipSecondary {
@@ -887,7 +1278,7 @@ class HubWindow(QMainWindow):
                 border-radius: 12px;
                 padding: 9px 12px;
                 background-color: #0f172a;
-                font-size: 16px;
+                font-size: 17px;
             }
             QFrame#guideCard {
                 border: 1px solid #334155;
@@ -966,14 +1357,145 @@ class HubWindow(QMainWindow):
                 max-width: 140px;
             }
             QPushButton#logToggleButton:hover { background-color: #1e293b; }
+            QLabel#brandLogo {
+                color: #f8fafc;
+                font-size: 14px;
+                font-weight: 900;
+                letter-spacing: 0.7px;
+                background-color: #dc2626;
+                border: 1px solid #fca5a5;
+                border-radius: 8px;
+                padding: 2px 8px;
+            }
             QTextEdit {
                 border: 1px solid #334155;
                 border-radius: 10px;
                 background-color: #020617;
                 font-family: monospace;
             }
+            QGroupBox#systemStatusPanel {
+                background-color: #0b1328;
+                border: 1px solid #334155;
+                border-radius: 12px;
+                margin-top: 10px;
+            }
+            QGroupBox#systemStatusPanel::title {
+                font-size: 18px;
+                font-weight: 800;
+                left: 12px;
+            }
+            QGroupBox#statusSubGroup {
+                background-color: #111827;
+                border: 1px solid #374151;
+                border-radius: 10px;
+                margin-top: 8px;
+            }
+            QGroupBox#statusSubGroup::title {
+                font-size: 15px;
+                font-weight: 700;
+                left: 10px;
+            }
+            QLabel#statusLabel {
+                color: #bfdbfe;
+                font-size: 14px;
+                font-weight: 700;
+            }
+            QLabel#statusValueText {
+                color: #e2e8f0;
+                font-size: 14px;
+                font-weight: 600;
+            }
+            QLabel#statusValueRam {
+                color: #86efac;
+                font-size: 14px;
+                font-weight: 700;
+            }
+            QLabel#statusValueDisk {
+                color: #7dd3fc;
+                font-size: 14px;
+                font-weight: 700;
+            }
+            QLabel#statusValueCpu {
+                color: #fdba74;
+                font-size: 14px;
+                font-weight: 700;
+            }
+            QProgressBar#statusBar {
+                border: 1px solid #334155;
+                border-radius: 5px;
+                background-color: #020617;
+                height: 10px;
+            }
+            QProgressBar#statusBar::chunk {
+                border-radius: 4px;
+                background-color: #22c55e;
+            }
+            QProgressBar#statusBarRam {
+                border: 1px solid #334155;
+                border-radius: 5px;
+                background-color: #020617;
+                height: 10px;
+            }
+            QProgressBar#statusBarRam::chunk {
+                border-radius: 4px;
+                background-color: #22c55e;
+            }
+            QProgressBar#statusBarDisk {
+                border: 1px solid #334155;
+                border-radius: 5px;
+                background-color: #020617;
+                height: 10px;
+            }
+            QProgressBar#statusBarDisk::chunk {
+                border-radius: 4px;
+                background-color: #38bdf8;
+            }
+            QProgressBar#statusBarCpu {
+                border: 1px solid #334155;
+                border-radius: 5px;
+                background-color: #020617;
+                height: 10px;
+            }
+            QProgressBar#statusBarCpu::chunk {
+                border-radius: 4px;
+                background-color: #fb923c;
+            }
             """
         )
+
+    def _make_logo_transparent(self, pixmap: QPixmap) -> QPixmap:
+        image = pixmap.toImage().convertToFormat(QImage.Format_ARGB32)
+        width = image.width()
+        height = image.height()
+        min_x, min_y = width, height
+        max_x, max_y = -1, -1
+        for y in range(height):
+            for x in range(width):
+                c = image.pixelColor(x, y)
+                if c.alpha() == 0:
+                    continue
+                delta = max(c.red(), c.green(), c.blue()) - min(c.red(), c.green(), c.blue())
+                if c.red() >= 228 and c.green() >= 228 and c.blue() >= 228 and delta <= 18:
+                    image.setPixelColor(x, y, QColor(c.red(), c.green(), c.blue(), 0))
+                    continue
+                min_x = min(min_x, x)
+                min_y = min(min_y, y)
+                max_x = max(max_x, x)
+                max_y = max(max_y, y)
+
+                # The source artwork uses black lettering. Make it readable on
+                # the dark shell while preserving the red brand mark.
+                if c.red() <= 80 and c.green() <= 80 and c.blue() <= 80:
+                    image.setPixelColor(x, y, QColor(241, 245, 249, c.alpha()))
+
+        if max_x >= min_x and max_y >= min_y:
+            padding = 4
+            left = max(0, min_x - padding)
+            top = max(0, min_y - padding)
+            right = min(width, max_x + padding + 1)
+            bottom = min(height, max_y + padding + 1)
+            image = image.copy(left, top, right - left, bottom - top)
+        return QPixmap.fromImage(image)
 
     def _set_badge(self, text: str, bg: str, fg: str = "#08111f"):
         self.badge_label.setText(text)
@@ -1276,6 +1798,21 @@ class HubWindow(QMainWindow):
         if self._is_process_running() and self.active_process:
             self._force_stop_active_process(log_prefix="[window-close]", bring_to_front=False)
         event.accept()
+
+    def keyPressEvent(self, event):
+        key = event.key()
+        if key == Qt.Key_Escape and self.isFullScreen():
+            self.showNormal()
+            event.accept()
+            return
+        if key == Qt.Key_F11:
+            if self.isFullScreen():
+                self.showNormal()
+            else:
+                self.showFullScreen()
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
 
 def main():
